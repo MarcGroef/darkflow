@@ -1,30 +1,37 @@
 import cv2
 import os
-
+import time
+import numpy as np
 
 class Cropper():
    
-  def __init__(self):
+  def __init__(self, labels):
 
      self.space = 1048608
      self.delete = 1114111   
- 
+     self.w = 1048695
+     self.a = 1048673
+     self.s = 1048691
+     self.d = 1048676
+     self.up = 1113938
+     self.down = 1113940
+     self.left = 1113937
+     self.right = 1113939
+     self.enter = 1048586
+     
+     self.objects = [] 
      self.height = 100
      self.width = 100
      self.x = 100
      self.y = 100
 
      self.currentImage = None
-     self.croppedImage = None
+     self.labels = labels
 
-     cv2.namedWindow('trackbarWindow', cv2.WINDOW_AUTOSIZE)
      cv2.namedWindow('imageWindow', cv2.WINDOW_AUTOSIZE)
-     cv2.namedWindow('croppedWindow', cv2.WINDOW_AUTOSIZE)
-     cv2.createTrackbar("height", 'trackbarWindow', 100, 300, self.heightCB)
-     cv2.createTrackbar("width", 'trackbarWindow', 100, 300, self.widthCB)
-     cv2.createTrackbar("y", 'trackbarWindow', 100, 300, self.YCB)
-     cv2.createTrackbar("x", 'trackbarWindow', 100, 300, self.XCB)
+
      cv2.waitKey(1)
+     
 
   def heightCB(self, value):
      self.height = value
@@ -43,37 +50,93 @@ class Cropper():
   def YCB(self, value):
      self.y = value
      self.render()
-
-
+     
+  def updateX(self, val):
+     self.x = self.x + val
+     
+  
+  def updateY(self, val):
+     self.y = self.y + val
+  
+  def updateWidth(self, val):
+     self.width = self.width + val
+  
+  def updateHeight(self, val):
+     self.height = self.height + val
+     
+  def addBBox(self, label):
+     self.objects = self.objects + [[self.getLabelFromUser(), self.x, self.y, self.width, self.height]]
+  
+  def reset(self):
+     self.objects = [] 
+     self.height = 100
+     self.width = 100
+     self.x = 100
+     self.y = 100
+     
+  def getLabelFromUser(self):
+     print "Label options:"
+     labelIdx = 0
+     for label in self.labels:
+        print "(" + str(labelIdx) + "): " + label + ", "
+        labelIdx += 1
+     
+     inp = cv2.waitKey(0) - 1048625 + 1
+     print "It's a " + self.labels[int(inp)] + "!"
+     return self.labels[int(inp)]
+     
+  def listen(self):
+     while True:
+        self.render()
+        key = cv2.waitKey(200)
+        if key != -1:
+           #print key
+           if key == self.enter:
+              
+              #xml = XMLWriter(self.objects, datafolder, imagefilename, imheight, imwidth, imchannels, exportfile):
+              self.reset()
+              return
+           if key == self.space:
+              self.addBBox("")
+           if key == self.a:
+              self.updateX(-2)
+           if key == self.d:
+              self.updateX(2)
+           if key == self.w:
+              self.updateY(-2)
+           if key == self.s:
+              self.updateY(2)
+           if key == self.up:
+              self.updateHeight(-2)
+           if key == self.down:
+              self.updateHeight(2)
+           if key == self.left:
+              self.updateWidth(-2)
+           if key == self.right:
+              self.updateWidth(2)
+              
+              
   def render(self):
-     self.modify()
-     if(self.currentImage != None):
-	     cv2.imshow( 'imageWindow', self.currentImage)
-	     cv2.waitKey(1)
+     
+     if(len(self.currentImage) > 0):
+        renderImage = np.ndarray.copy(self.currentImage)
+        for obj in self.objects:
+           cv2.putText(renderImage,obj[0],(obj[1],obj[2] - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (115,115,115),2)
+           cv2.rectangle(renderImage,(obj[1],obj[2]),(obj[1]+obj[3],obj[2]+obj[4]),(50,50,50),2)
 
-     if(self.croppedImage != None):
-	     cv2.imshow( 'croppedWindow', self.croppedImage)
-	     cv2.waitKey(1)
+        
+        cv2.rectangle(renderImage,(self.x,self.y),(self.x+self.width,self.y+self.height),(0,0,255),2)
+        cv2.imshow( 'imageWindow', renderImage)
+        cv2.waitKey(1)
 
-  def modify(self):
-     self.croppedImage = self.currentImage[self.y:(self.height + self.y),self.x:(self.width + self.x)]
+
+
 
   def crop(self, imagepath, exportPath):
      self.currentImage = cv2.imread(imagepath)
      self.render()
-     if(os.path.isfile(exportPath)):
-        return
-     key = None
-     while True:
-        key = cv2.waitKey(1)
-        self.render()
-        if key == self.space:
-           cv2.imwrite(exportPath, self.croppedImage, [cv2.IMWRITE_JPEG_QUALITY, 100] )
-           print("exported to " + exportPath)
-           break
-        if key == self.delete:
-           break
-        
+     self.listen()
+
      
      
      
