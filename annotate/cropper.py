@@ -1,3 +1,4 @@
+from xmlwriter import XMLWriter
 import cv2
 import os
 import time
@@ -5,7 +6,7 @@ import numpy as np
 
 class Cropper():
    
-  def __init__(self, labels):
+  def __init__(self, labels, exportfolder):
 
      self.space = 1048608
      self.delete = 1114111   
@@ -13,6 +14,7 @@ class Cropper():
      self.a = 1048673
      self.s = 1048691
      self.d = 1048676
+     self.r = 1048690
      self.up = 1113938
      self.down = 1113940
      self.left = 1113937
@@ -27,6 +29,9 @@ class Cropper():
 
      self.currentImage = None
      self.labels = labels
+     self.exportfolder = exportfolder
+     self.currentImagePath = ""
+     self.counter = 0
 
      cv2.namedWindow('imageWindow', cv2.WINDOW_AUTOSIZE)
 
@@ -69,11 +74,14 @@ class Cropper():
   
   def reset(self):
      self.objects = [] 
+     
+  
+  def resetBBox(self):
      self.height = 100
      self.width = 100
      self.x = 100
      self.y = 100
-     
+
   def getLabelFromUser(self):
      print "Label options:"
      labelIdx = 0
@@ -84,7 +92,18 @@ class Cropper():
      inp = cv2.waitKey(0) - 1048625 + 1
      print "It's a " + self.labels[int(inp)] + "!"
      return self.labels[int(inp)]
-     
+
+  def writeXML(self):
+     try:
+       print "trying to write..."
+       xml = XMLWriter(self.objects, "borgball", (str(self.imIdx) + ".jpg"), 240, 320, 3, (self.exportfolder + str(self.imIdx) + ".xml"))
+       xml.write()
+     except Exception as ex:
+       print ex
+       print "something went wrong during writeXML()"
+
+
+
   def listen(self):
      while True:
         self.render()
@@ -92,12 +111,13 @@ class Cropper():
         if key != -1:
            #print key
            if key == self.enter:
-              
-              #xml = XMLWriter(self.objects, datafolder, imagefilename, imheight, imwidth, imchannels, exportfile):
+              self.writeXML()
               self.reset()
               return
            if key == self.space:
               self.addBBox("")
+           if key == self.r:
+              self.resetBBox()
            if key == self.a:
               self.updateX(-2)
            if key == self.d:
@@ -132,7 +152,9 @@ class Cropper():
 
 
 
-  def crop(self, imagepath, exportPath):
+  def crop(self, imagepath, exportPath, imIdx):
+     self.imIdx = imIdx
+     self.currentImagePath = imagepath
      self.currentImage = cv2.imread(imagepath)
      self.render()
      self.listen()
